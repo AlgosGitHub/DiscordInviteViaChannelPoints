@@ -1,0 +1,65 @@
+name: Discord Invite Gateway CI/CD
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v2
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'oracle'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v2
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Build with Maven
+        run: mvn -B package --file pom.xml
+        env:
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+
+      - name: Deploy to Server
+        env:
+          DEPLOY_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          HOST: ${{ secrets.SERVER_IP }}
+          USER: root
+          TARGET: /opt/raffle-bot
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+        run: |
+          # Create the SSH directory and give it the right permissions
+          mkdir -p ~/.ssh
+          
+          # Add the remote server to known hosts to avoid authenticity confirmation prompt
+          ssh-keyscan $HOST > ~/.ssh/known_hosts
+          
+          # Write the SSH key from GitHub secrets to a file
+          echo "$DEPLOY_KEY" > deploy_key
+          chmod 600 deploy_key
+          
+          # ssh the mkdir
+          ssh -i deploy_key $USER@$HOST "mkdir -p $TARGET"
+          
+          # Use scp to copy files to the remote server
+          scp -i deploy_key ./target/*.jar $USER@$HOST:$TARGET
+
+          # set the env vars
+          # ssh -i deploy_key $USER@$HOST "echo \"export APP_ID=$TWITCH_CLIENT_ID\" >> ~/.bashrc"
+          # ssh -i deploy_key $USER@$HOST "echo \"export APP_SECRET=$TWITCH_CLIENT_SECRET\" >> ~/.bashrc"
+          
+          # Restart the service on the remote server
+          # ssh -i deploy_key $USER@$HOST "sudo systemctl restart raffle.service"
+          
+          # Cleanup by removing the deploy_key
+          rm -f deploy_key

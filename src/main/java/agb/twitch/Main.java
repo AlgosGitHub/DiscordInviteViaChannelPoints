@@ -10,26 +10,32 @@ public class Main {
 
         //check for arg -create "raffle name", and if present: create a new reward with the given name
 
-        if(args.length > 0) {
-            if(args[0].equals("-create")) {
-                if(args.length > 1) {
+        try {
 
-                    String rewardName = args[1];
+            if(args.length > 0) {
+                if(args[0].equals("-create")) {
+                    if(args.length > 1) {
 
-                    createRewardWithName(rewardName);
+                        String rewardName = args[1];
 
-                }
-            } else if(args[0].equals("-listen")) {
-                if(args.length > 1) {
+                        createRewardWithName(rewardName);
 
-                    String rewardId = args[1];
+                    }
+                } else if(args[0].equals("-listen")) {
+                    if(args.length > 1) {
 
-                    listenForRedemptionsOfRewardId(rewardId);
+                        String rewardId = args[1];
 
+                        listenForRedemptionsOfRewardId(rewardId);
+
+                    }
                 }
             }
-        }
 
+        } catch (Exception ex) {
+            System.out.println("Top Level Exception: " + ex.getMessage());
+            ex.printStackTrace();
+        }
     }
 
     private static void listenForRedemptionsOfRewardId(String rewardId) {
